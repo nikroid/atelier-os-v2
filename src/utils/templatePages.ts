@@ -1,0 +1,165 @@
+import { uid } from '../db/database';
+import type { DocBlock, DocTemplate, DocTemplatePage, PageKind } from '../types/templates';
+import { createBlockId } from './blockTree';
+import type { TemplateContext } from './templateFields';
+
+export function emptyPageRoot(): DocBlock {
+  return {
+    id: createBlockId(),
+    type: 'container',
+    direction: 'column',
+    gap: 0,
+    align: 'stretch',
+    padding: 0,
+    children: [],
+  };
+}
+
+export function defaultPageKindForTemplate(type: DocTemplate['type']): PageKind {
+  if (type === 'catalogue_page' || type === 'cartel' || type === 'fiche' || type === 'certificat') {
+    return 'dynamic';
+  }
+  return 'static';
+}
+
+export function createTemplatePage(kind: PageKind = 'static'): DocTemplatePage {
+  return {
+    id: uid('page'),
+    kind,
+    root: emptyPageRoot(),
+  };
+}
+
+export function legacyPageId(templateId: string, index = 0): string {
+  return `${templateId}_page_${index}`;
+}
+
+/** Assure `pages[]` existe (migration depuis l'ancien champ `root` unique). */
+export function getTemplatePages(template: DocTemplate): DocTemplatePage[] {
+  if (template.pages?.length) return template.pages;
+  return [
+    {
+      id: legacyPageId(template.id),
+      kind: defaultPageKindForTemplate(template.type),
+      root: template.root,
+    },
+  ];
+}
+
+export function normalizeTemplate(template: DocTemplate): DocTemplate {
+  const pages = getTemplatePages(template);
+  return {
+    ...template,
+    pages,
+    root: pages[0]?.root ?? template.root,
+  };
+}
+
+export function syncTemplateRoots(template: DocTemplate): DocTemplate {
+  const pages = template.pages?.length ? template.pages : getTemplatePages(template);
+  return {
+    ...template,
+    pages,
+    root: pages[0]?.root ?? template.root,
+  };
+}
+
+export function addTemplatePage(template: DocTemplate, kind: PageKind = 'static'): DocTemplate {
+  const pages = [...getTemplatePages(template), createTemplatePage(kind)];
+  return syncTemplateRoots({ ...template, pages });
+}
+
+export function insertTemplatePage(
+  template: DocTemplate,
+  afterIndex: number,
+  kind: PageKind = 'static',
+): DocTemplate {
+  const pages = [...getTemplatePages(template)];
+  pages.splice(afterIndex + 1, 0, createTemplatePage(kind));
+  return syncTemplateRoots({ ...template, pages });
+}
+
+export function reorderTemplatePages(
+  template: DocTemplate,
+  fromIndex: number,
+  toIndex: number,
+): DocTemplate {
+  const pages = [...getTemplatePages(template)];
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= pages.length ||
+    toIndex >= pages.length
+  ) {
+    return template;
+  }
+  const [moved] = pages.splice(fromIndex, 1);
+  pages.splice(toIndex, 0, moved);
+  return syncTemplateRoots({ ...template, pages });
+}
+
+export function removeTemplatePage(template: DocTemplate, pageId: string): DocTemplate {
+  const pages = getTemplatePages(template).filter((p) => p.id !== pageId);
+  if (pages.length === 0) return template;
+  return syncTemplateRoots({ ...template, pages });
+}
+
+export function updateTemplatePage(
+  template: DocTemplate,
+  pageId: string,
+  patch: Partial<Pick<DocTemplatePage, 'kind' | 'root'>>,
+): DocTemplate {
+  const pages = getTemplatePages(template).map((p) => (p.id === pageId ? { ...p, ...patch } : p));
+  return syncTemplateRoots({ ...template, pages });
+}
+
+export function updateTemplatePageRoot(
+  template: DocTemplate,
+  pageId: string,
+  rootUpdater: (root: DocBlock) => DocBlock,
+): DocTemplate {
+  const page = getTemplatePages(template).find((p) => p.id === pageId);
+  if (!page) return template;
+  return updateTemplatePage(template, pageId, {
+    root: rootUpdater(page.root),
+  });
+}
+
+export interface ExpandedPdfPage {
+  root: DocBlock;
+  ctx: TemplateContext;
+}
+
+/** Déplie les pages statiques (×1) et dynamiques (× nb de contextes). */
+export function expandTemplateForPdf(
+  template: DocTemplate,
+  contexts: TemplateContext[],
+): ExpandedPdfPage[] {
+  const pages = getTemplatePages(template);
+  const fallbackCtx: TemplateContext = contexts[0] ?? {};
+  const result: ExpandedPdfPage[] = [];
+
+  for (const page of pages) {
+    if (page.kind === 'dynamic') {
+      const ctxList = contexts.length ? contexts : [fallbackCtx];
+      for (const ctx of ctxList) {
+        result.push({ root: page.root, ctx });
+      }
+    } else {
+      result.push({ root: page.root, ctx: fallbackCtx });
+    }
+  }
+
+  return result;
+}
+
+export function countExpandedPdfPages(template: DocTemplate, dataCount: number): number {
+  const pages = getTemplatePages(template);
+  const n = Math.max(1, dataCount);
+  return pages.reduce((sum, p) => sum + (p.kind === 'dynamic' ? n : 1), 0);
+}
+
+export function pageKindLabel(kind: PageKind): string {
+  return kind === 'dynamic' ? 'Dynamique' : 'Unique';
+}
