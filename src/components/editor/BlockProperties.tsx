@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FONT_FAMILIES, FONT_SIZE_PRESETS } from '../../utils/fonts';
 import type { DocBlock, ImageDropShadow } from '../../types/templates';
 import { FIELD_CATALOG, isImageField, type TemplateContext } from '../../utils/templateFields';
-import { deleteImageGroup, saveImageGroupFromFile } from '../../utils/mediaStore';
+import { fileToDataUrl } from '../../utils/helpers';
 import { resolveShortcodes, shortcodeTag, TEXT_SHORTCODE_FIELDS } from '../../utils/templateShortcodes';
 import { IconToggleGroup } from './IconToggleGroup';
 import { FlexDirectionControls } from './FlexDirectionControls';
@@ -331,7 +331,6 @@ function ImageShadowDetails({
 interface BlockPropertiesProps {
   block: DocBlock | null;
   previewCtx?: TemplateContext;
-  templateId?: string;
   canDelete?: boolean;
   onChange: (patch: Partial<DocBlock>) => void;
   onMove: (dir: 'up' | 'down') => void;
@@ -492,7 +491,6 @@ function BlockSpacingControls({
 export function BlockProperties({
   block,
   previewCtx,
-  templateId = '',
   canDelete = true,
   onChange,
   onMove,
@@ -532,15 +530,10 @@ export function BlockProperties({
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !templateId) return;
-    try {
-      const oldId = block.imageMediaGroupId;
-      const groupId = await saveImageGroupFromFile(file, 'template', templateId);
-      onChange({ imageMediaGroupId: groupId, imageSrc: undefined });
-      if (oldId) void deleteImageGroup(oldId);
-    } finally {
-      e.target.value = '';
-    }
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    onChange({ imageSrc: dataUrl });
+    e.target.value = '';
   };
 
   const insertShortcode = (label: string) => {

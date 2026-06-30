@@ -1,6 +1,5 @@
 import Dexie, { type Table } from 'dexie';
 import type { Artist, Contact, Exhibition, Work } from '../types';
-import type { MediaAsset } from '../types/media';
 import type { DocTemplate } from '../types/templates';
 import type { AppSettings } from '../types/settings';
 import type { MailTemplate, GmailAuth } from '../types/mail';
@@ -14,7 +13,6 @@ export class AtelierDatabase extends Dexie {
   mailTemplates!: Table<MailTemplate, string>;
   gmailAuth!: Table<GmailAuth, string>;
   settings!: Table<AppSettings, string>;
-  media!: Table<MediaAsset, string>;
 
   constructor() {
     super('AtelierOS');
@@ -57,17 +55,6 @@ export class AtelierDatabase extends Dexie {
       mailTemplates: 'id, nom, updatedAt',
       gmailAuth: 'id',
       settings: 'id',
-    });
-    this.version(6).stores({
-      artists: 'id, nom, updatedAt',
-      works: 'id, ref, titre, artisteId, statut, annee, updatedAt',
-      contacts: 'id, nom, categorie, email, updatedAt',
-      exhibitions: 'id, titre, artisteId, date_debut, updatedAt',
-      templates: 'id, nom, type, updatedAt',
-      mailTemplates: 'id, nom, updatedAt',
-      gmailAuth: 'id',
-      settings: 'id',
-      media: 'id, groupId, entityType, entityId, variant',
     });
   }
 }

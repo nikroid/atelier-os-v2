@@ -14,7 +14,6 @@ import {
 } from '../utils/mailAttachments';
 import { generateTemplateDocumentBlob } from '../utils/templatePdf';
 import type { TemplateContext } from '../utils/templateFields';
-import { enrichTemplateContexts } from '../utils/templateMediaContext';
 
 interface ContactMailAttachmentsProps {
   disabled?: boolean;
@@ -99,12 +98,10 @@ export function ContactMailAttachments({
     setPdfError('');
     setGeneratingPdf(true);
     try {
-      const contexts = await enrichTemplateContexts(
-        selectedWorks.map((work: Work) => ({
-          work,
-          artist: artistMap.get(work.artisteId),
-        })),
-      );
+      const contexts: TemplateContext[] = selectedWorks.map((work: Work) => ({
+        work,
+        artist: artistMap.get(work.artisteId),
+      }));
 
       const rawBlob = await generateTemplateDocumentBlob(
         tpl,

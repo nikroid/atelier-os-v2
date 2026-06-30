@@ -15,7 +15,6 @@ import {
   resolveImageWidth,
 } from '../../utils/imageBlockLayout';
 import { useDropHover } from './DropHoverContext';
-import { useMediaUrl } from '../../hooks/useMediaUrl';
 
 type LayoutAxis = FlexAxis;
 
@@ -337,19 +336,6 @@ function DropSlot({
   );
 }
 
-function StaticImageContent({ block, inner }: { block: DocBlock; inner: CSSProperties }) {
-  const mediaUrl = useMediaUrl(block.imageMediaGroupId, 'display');
-  const src = mediaUrl ?? block.imageSrc;
-  if (!src) {
-    return (
-      <div className="tpl-image-placeholder" style={inner}>
-        Image statique
-      </div>
-    );
-  }
-  return <img src={src} alt="" style={inner} />;
-}
-
 export function BlockRenderer({
   block,
   ctx,
@@ -488,7 +474,13 @@ export function BlockRenderer({
       block.imageShadow,
     );
     return wrap(
-      <StaticImageContent block={block} inner={inner} />,
+      block.imageSrc ? (
+        <img src={block.imageSrc} alt="" style={inner} />
+      ) : (
+        <div className="tpl-image-placeholder" style={inner}>
+          Image statique
+        </div>
+      ),
       'tpl-static-image',
       wrapper,
     );

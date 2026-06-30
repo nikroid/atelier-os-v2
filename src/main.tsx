@@ -5,8 +5,6 @@ import { seedDemoData } from './utils/backup';
 import { cleanupBuiltinTemplatesFromDb } from './utils/defaultTemplates';
 import { db } from './db/database';
 import { ensureDefaultSettings } from './hooks/useSettings';
-import { migrateLegacyImagesToMedia } from './utils/mediaMigration';
-import { cleanupOrphanMedia } from './utils/mediaStore';
 import {
   APP_BUILD_NUMBER,
   APP_BUILD_TIME,
@@ -41,6 +39,7 @@ console.info('Vérifier : document.documentElement.dataset ou window.__ATELIER_O
 
 if ('serviceWorker' in navigator) {
   if (import.meta.env.DEV) {
+    // Le SW casse le hot-reload Vite (WebSocket) en local
     void navigator.serviceWorker.getRegistrations().then((regs) => {
       regs.forEach((reg) => void reg.unregister());
     });
@@ -52,36 +51,18 @@ if ('serviceWorker' in navigator) {
   }
 }
 
-function renderApp(): void {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
-}
-
-async function runPostBootTasks(): Promise<void> {
-  try {
-    await migrateLegacyImagesToMedia();
-    await cleanupOrphanMedia();
-    await ensureDefaultSettings();
-    await cleanupBuiltinTemplatesFromDb(
+seedDemoData()
+  .then(() => ensureDefaultSettings())
+  .then(() =>
+    cleanupBuiltinTemplatesFromDb(
       () => db.templates.toArray(),
       (id) => db.templates.delete(id),
+    ),
+  )
+  .then(() => {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
     );
-  } catch (err) {
-    console.error('[Atelier OS] Tâches de démarrage en arrière-plan', err);
-  }
-}
-
-async function boot(): Promise<void> {
-  try {
-    await seedDemoData();
-  } catch (err) {
-    console.error('[Atelier OS] seedDemoData', err);
-  }
-  renderApp();
-  void runPostBootTasks();
-}
-
-void boot();
+  });

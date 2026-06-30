@@ -81,8 +81,6 @@ export interface DocBlock {
   textTransform?: 'none' | 'uppercase';
   imageHeight?: string | number;
   imageWidth?: string | number;
-  imageMediaGroupId?: string;
-  /** @deprecated Utiliser imageMediaGroupId */
   imageSrc?: string;
   objectFit?: 'cover' | 'contain';
   /** Ombre portée (drop-shadow) autour de l'image */

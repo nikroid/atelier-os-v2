@@ -37,7 +37,6 @@ import {
   updateBlock,
 } from '../utils/blockTree';
 import type { TemplateContext } from '../utils/templateFields';
-import { enrichTemplateContext } from '../utils/templateMediaContext';
 import {
   addTemplatePage,
   createTemplatePage,
@@ -336,10 +335,8 @@ export function EditorPage() {
   const history = useUndoHistory<DocTemplate | null>(null);
   const selectedBlockIdRef = useRef<string | null>(null);
   selectedBlockIdRef.current = selectedBlockId;
-  const draftIdRef = useRef<string | null>(null);
 
   const draft = history.present;
-  draftIdRef.current = draft?.id ?? null;
 
   useEffect(() => {
     if (!allTemplates?.length || activeId) return;
@@ -348,36 +345,24 @@ export function EditorPage() {
 
   useEffect(() => {
     if (!activeId) return;
-    if (draftIdRef.current === activeId) return;
     const tpl = resolveTemplate(activeId, userTemplates);
-    if (!tpl) return;
-    const copy = normalizeTemplate(JSON.parse(JSON.stringify(tpl)) as DocTemplate);
-    if (!copy.format) copy.format = 'a4';
-    if (copy.margin === undefined) copy.margin = 12;
-    history.reset(copy);
-    setSelectedBlockId(null);
-    setActivePageIndex(0);
-    setSaved(true);
+    if (tpl) {
+      const copy = normalizeTemplate(JSON.parse(JSON.stringify(tpl)) as DocTemplate);
+      if (!copy.format) copy.format = 'a4';
+      if (copy.margin === undefined) copy.margin = 12;
+      history.reset(copy);
+      setSelectedBlockId(null);
+      setActivePageIndex(0);
+      setSaved(true);
+    }
   }, [activeId, userTemplates]);
 
-  const basePreviewCtx = useMemo((): TemplateContext => {
+  const previewCtx = useMemo((): TemplateContext => {
     const work = works?.find((w) => w.id === previewWorkId) ?? works?.[0];
     const artist = work ? artistMap.get(work.artisteId) : artists?.[0];
     const exhibition = exhibitions?.find((e) => e.id === previewExpoId) ?? exhibitions?.[0];
     return { work, artist, exhibition };
   }, [works, previewWorkId, artistMap, artists, exhibitions, previewExpoId]);
-
-  const [previewCtx, setPreviewCtx] = useState<TemplateContext>(basePreviewCtx);
-
-  useEffect(() => {
-    let cancelled = false;
-    void enrichTemplateContext(basePreviewCtx).then((ctx) => {
-      if (!cancelled) setPreviewCtx(ctx);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [basePreviewCtx]);
 
   const templatePages = useMemo(
     () => (draft ? getTemplatePages(draft) : []),
@@ -580,44 +565,22 @@ export function EditorPage() {
   };
 
   const createNew = async () => {
-    const tpl = normalizeTemplate(newEmptyTemplate());
-    history.reset(tpl);
+    const tpl = newEmptyTemplate();
+    await db.templates.add(tpl);
     setActiveId(tpl.id);
-    setSelectedBlockId(null);
-    setActivePageIndex(0);
-    setSaved(true);
-    try {
-      await db.templates.add(tpl);
-    } catch (err) {
-      console.error('[Atelier OS] createNew', err);
-      alert('Impossible de créer le modèle. Réessayez dans quelques secondes.');
-      const fallbackId = resolveDefaultEditorTemplateId(userTemplates);
-      setActiveId(fallbackId);
-      const fallback = resolveTemplate(fallbackId, userTemplates);
-      history.reset(fallback ? normalizeTemplate(JSON.parse(JSON.stringify(fallback)) as DocTemplate) : null);
-    }
   };
 
   const createCopy = async () => {
     if (!draft) return;
-    const copy = normalizeTemplate({
-      ...structuredClone(draft),
+    const copy = {
+      ...JSON.parse(JSON.stringify(draft)),
       id: uid('tpl'),
       nom: isReadonly ? `${draft.nom} (personnalisé)` : `${draft.nom} (copie)`,
       createdAt: now(),
       updatedAt: now(),
-    });
-    history.reset(copy);
+    } as DocTemplate;
+    await db.templates.add(copy);
     setActiveId(copy.id);
-    setSelectedBlockId(null);
-    setActivePageIndex(0);
-    setSaved(true);
-    try {
-      await db.templates.add(copy);
-    } catch (err) {
-      console.error('[Atelier OS] createCopy', err);
-      alert('Impossible de dupliquer le modèle. Réessayez dans quelques secondes.');
-    }
   };
 
   const requestRemove = () => {
@@ -858,7 +821,6 @@ export function EditorPage() {
                     <BlockProperties
                       block={selectedBlock}
                       previewCtx={previewCtx}
-                      templateId={draft?.id ?? ''}
                       canDelete={Boolean(
                         selectedBlockId && activePage && selectedBlockId !== activePage.root.id,
                       )}

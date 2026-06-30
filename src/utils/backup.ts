@@ -1,6 +1,103 @@
-import { db } from '../db/database';
+import type { AppBackup } from '../types';
+import { db, now } from '../db/database';
+import { DEFAULT_SETTINGS } from '../types/settings';
+import { isBuiltinTemplate } from './templateCatalog';
+import { normalizeTemplate } from './templatePages';
 
-export { importArtdbFile as importBackup, downloadArtdbBackup as downloadBackup } from './artdbZip';
+export async function importBackupFromData(data: AppBackup): Promise<{ counts: Record<string, number> }> {
+  if (!data.artists || !data.works || !data.contacts || !data.exhibitions) {
+    throw new Error('Fichier de sauvegarde invalide');
+  }
+
+  const preserveSettings = await db.settings.get('app');
+
+  await db.transaction(
+    'rw',
+    [db.artists, db.works, db.contacts, db.exhibitions, db.templates, db.mailTemplates, db.settings],
+    async () => {
+      await Promise.all([
+        db.artists.clear(),
+        db.works.clear(),
+        db.contacts.clear(),
+        db.exhibitions.clear(),
+        db.templates.clear(),
+        db.mailTemplates.clear(),
+      ]);
+      await db.artists.bulkAdd(data.artists);
+      await db.works.bulkAdd(data.works);
+      await db.contacts.bulkAdd(data.contacts);
+      await db.exhibitions.bulkAdd(data.exhibitions);
+      if (data.templates?.length) {
+        const userTemplates = data.templates
+          .filter((t) => !isBuiltinTemplate(t))
+          .map((t) => normalizeTemplate(t));
+        if (userTemplates.length) await db.templates.bulkAdd(userTemplates);
+      }
+      if (data.mailTemplates?.length) {
+        await db.mailTemplates.bulkAdd(data.mailTemplates);
+      }
+      await db.settings.put({
+        ...DEFAULT_SETTINGS,
+        ...(data.settings ?? {}),
+        ...(preserveSettings ?? {}),
+        id: 'app',
+        mode: preserveSettings?.mode ?? data.settings?.mode ?? DEFAULT_SETTINGS.mode,
+        updatedAt: now(),
+      });
+    },
+  );
+
+  return {
+    counts: {
+      artistes: data.artists.length,
+      oeuvres: data.works.length,
+      contacts: data.contacts.length,
+      expositions: data.exhibitions.length,
+      modeles: data.templates?.length ?? 0,
+    },
+  };
+}
+
+export async function exportBackup(): Promise<AppBackup> {
+  const [artists, works, contacts, exhibitions, templates, mailTemplates, settings] = await Promise.all([
+    db.artists.toArray(),
+    db.works.toArray(),
+    db.contacts.toArray(),
+    db.exhibitions.toArray(),
+    db.templates.toArray(),
+    db.mailTemplates.toArray(),
+    db.settings.toArray(),
+  ]);
+
+  return {
+    version: '1.3',
+    exportedAt: new Date().toISOString(),
+    artists,
+    works,
+    contacts,
+    exhibitions,
+    templates,
+    mailTemplates,
+    settings: settings[0],
+  };
+}
+
+export async function downloadBackup(): Promise<void> {
+  const backup = await exportBackup();
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `atelier-os-backup-${new Date().toISOString().slice(0, 10)}.artdb`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importBackup(file: File): Promise<{ counts: Record<string, number> }> {
+  const text = await file.text();
+  const data = JSON.parse(text) as AppBackup;
+  return importBackupFromData(data);
+}
 
 export async function seedDemoData(): Promise<void> {
   const count = await db.artists.count();
@@ -19,7 +116,7 @@ export async function seedDemoData(): Promise<void> {
     site: 'https://nicolaslabrunye.fr',
     instagram: '@nicolaslabrunye',
     email: 'contact@example.com',
-    photoId: null,
+    photo: '',
     createdAt: ts,
     updatedAt: ts,
   });
@@ -35,7 +132,7 @@ export async function seedDemoData(): Promise<void> {
       dimensions: '120 × 80 cm',
       prix: 2500,
       description: 'Une figure solitaire traversant un paysage onirique.',
-      imageIds: [],
+      images: [],
       statut: 'disponible',
       certificat: true,
       createdAt: ts,
@@ -51,7 +148,7 @@ export async function seedDemoData(): Promise<void> {
       dimensions: '70 × 50 cm',
       prix: 1200,
       description: 'Arbres générés par des processus computationnels.',
-      imageIds: [],
+      images: [],
       statut: 'disponible',
       certificat: true,
       createdAt: ts,
