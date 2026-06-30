@@ -1,4 +1,4 @@
-import { type CSSProperties, type DragEvent, type MouseEvent, type ReactNode } from 'react';
+import { type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import type { DocBlock } from '../../types/templates';
 import { fontFamilyCss } from '../../utils/fonts';
 import { flexAxis } from '../../utils/flexDirection';
@@ -15,8 +15,6 @@ import {
   resolveImageWidth,
 } from '../../utils/imageBlockLayout';
 import { useDropHover } from './DropHoverContext';
-import { BlockShell } from './BlockShell';
-import { blockSupportsBackground } from '../../utils/blockBackground';
 import { useMediaUrl } from '../../hooks/useMediaUrl';
 
 type LayoutAxis = FlexAxis;
@@ -374,48 +372,23 @@ export function BlockRenderer({
     dragHandlers?: ContainerDragHandlers,
   ) => {
     const merged = { ...blockBaseStyle(block), ...style };
-    const editHandlers = isEdit
-      ? {
-          onClick: (e: MouseEvent) => {
-            e.stopPropagation();
-            if (depth === 0) onPageBackgroundClick?.();
-            else onSelect?.(block.id);
-          },
-          onDragStart: (e: DragEvent) => {
-            e.stopPropagation();
-            e.dataTransfer.setData('application/atelier-block-id', block.id);
-            e.dataTransfer.effectAllowed = 'move';
-          },
-          onDragEnd: () => setDropHover(null),
-          dragHandlers,
-        }
-      : {};
-
-    if (blockSupportsBackground(block)) {
-      return (
-        <BlockShell
-          block={block}
-          className={className}
-          style={merged}
-          isEdit={isEdit}
-          isSelected={isSelected}
-          depth={depth}
-          {...editHandlers}
-        >
-          {children}
-        </BlockShell>
-      );
-    }
-
     if (!isEdit) return <div className={className} style={merged}>{children}</div>;
     return (
       <div
         className={`${className} ${isSelected ? 'block-selected' : ''} block-editable`}
         style={merged}
-        onClick={editHandlers.onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (depth === 0) onPageBackgroundClick?.();
+          else onSelect?.(block.id);
+        }}
         draggable={depth > 0}
-        onDragStart={editHandlers.onDragStart}
-        onDragEnd={editHandlers.onDragEnd}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.setData('application/atelier-block-id', block.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => setDropHover(null)}
         {...dragHandlers}
       >
         {children}
@@ -493,18 +466,14 @@ export function BlockRenderer({
   }
 
   if (block.type === 'rectangle') {
-    const rectStyle: CSSProperties = {
+    return wrap(null, 'tpl-rectangle', {
       height: block.rectHeight ?? 24,
       width: block.width ?? '100%',
       maxWidth: '100%',
       alignSelf: block.selfAlign ?? 'center',
+      backgroundColor: block.backgroundColor ?? '#e8e4dc',
       border: `${block.borderWidth ?? 1}px solid ${block.borderColor ?? '#d4d0c8'}`,
-    };
-    const bgType = block.blockBgType ?? (block.backgroundColor ? 'color' : 'none');
-    if (bgType === 'none') {
-      rectStyle.backgroundColor = 'transparent';
-    }
-    return wrap(null, 'tpl-rectangle', rectStyle);
+    });
   }
 
   if (block.type === 'image') {

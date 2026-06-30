@@ -180,7 +180,6 @@ async function collectReferencedGroupIdsFromDb(): Promise<Set<string>> {
 
 function collectBlockGroupIds(block: import('../types/templates').DocBlock, refs: Set<string>): void {
   if (block.imageMediaGroupId) refs.add(block.imageMediaGroupId);
-  if (block.blockBgImageGroupId) refs.add(block.blockBgImageGroupId);
   for (const child of block.children ?? []) {
     collectBlockGroupIds(child, refs);
   }

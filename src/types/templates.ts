@@ -42,9 +42,6 @@ export type SelfAlign = 'flex-start' | 'center' | 'flex-end';
 export type TextAlign = 'left' | 'center' | 'right';
 export type FontFamily = 'serif' | 'sans' | 'mono';
 
-export type BlockBackgroundType = 'none' | 'color' | 'image';
-export type BlockBackgroundImageFit = 'cover' | 'contain';
-
 export interface ImageDropShadow {
   enabled?: boolean;
   offsetX?: number;
@@ -93,11 +90,6 @@ export interface DocBlock {
   spacerHeight?: number;
   rectHeight?: number;
   backgroundColor?: string;
-  /** Arrière-plan : aucun, couleur unie ou image */
-  blockBgType?: BlockBackgroundType;
-  blockBgColor?: string;
-  blockBgImageGroupId?: string;
-  blockBgImageFit?: BlockBackgroundImageFit;
   borderColor?: string;
   borderWidth?: number;
 }
