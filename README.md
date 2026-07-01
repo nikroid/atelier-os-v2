@@ -1,6 +1,6 @@
 # Atelier OS
 
-**Compilateur documentaire artistique** — version actuelle **0.1.x** (pré-v1, repo `atelier-os-v2`).
+**Compilateur documentaire artistique** — version actuelle **0.1.x** (pré-v1, repo `atelier-os-0.1.0`).
 
 Cette version est hébergée via **GitHub Pages** (pas Netlify).
 
@@ -15,7 +15,7 @@ Cette version est hébergée via **GitHub Pages** (pas Netlify).
 ## Démarrage local
 
 ```bash
-cd atelier-os-v2
+cd atelier-os-0.1.0
 npm install
 cp .env.example .env.local   # VITE_GOOGLE_CLIENT_ID
 npm run dev
@@ -25,7 +25,7 @@ Ouvrir [http://localhost:5191](http://localhost:5191)
 
 ## GitHub Pages
 
-1. Créer un repo GitHub **`atelier-os-v2`** (public recommandé)
+1. Créer un repo GitHub **`atelier-os-0.1.0`** (public recommandé)
 2. Pousser ce dossier :
 
 ```bash
@@ -33,7 +33,7 @@ git init
 git add .
 git commit -m "Atelier OS v2 — base GitHub Pages"
 git branch -M main
-git remote add origin git@github.com:nikroid/atelier-os-v2.git
+git remote add origin git@github.com:nikroid/atelier-os-0.1.0.git
 git push -u origin main
 ```
 
@@ -45,7 +45,7 @@ git push -u origin main
 
 Le workflow `.github/workflows/deploy-pages.yml` build et déploie à chaque push sur `main`.
 
-URL attendue : `https://nikroid.github.io/atelier-os-v2/`
+URL attendue : `https://nikroid.github.io/atelier-os-0.1.0/`
 
 ## Prototype Netlify
 

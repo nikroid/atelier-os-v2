@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publie atelier-os-v2 sur GitHub (après : gh auth login)
+# Publie atelier-os-0.1.0 sur GitHub (après : gh auth login)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -25,12 +25,12 @@ if git remote get-url origin >/dev/null 2>&1; then
   echo "→ Remote origin déjà configuré"
   git push -u origin main
 else
-  echo "→ Création du repo nikroid/atelier-os-v2 et push"
-  gh repo create nikroid/atelier-os-v2 --public --source=. --remote=origin --push --description "Atelier OS v2 — PWA documentaire artistique (GitHub Pages)"
+  echo "→ Création du repo nikroid/atelier-os-0.1.0 et push"
+  gh repo create nikroid/atelier-os-0.1.0 --public --source=. --remote=origin --push --description "Atelier OS v2 — PWA documentaire artistique (GitHub Pages)"
 fi
 
 echo ""
-echo "✓ Repo : https://github.com/nikroid/atelier-os-v2"
+echo "✓ Repo : https://github.com/nikroid/atelier-os-0.1.0"
 echo "→ Activez Pages : Settings → Pages → Build and deployment → GitHub Actions"
-echo "→ Site : https://nikroid.github.io/atelier-os-v2/"
+echo "→ Site : https://nikroid.github.io/atelier-os-0.1.0/"
 echo "→ Google Cloud : ajoutez http://localhost:5191 et https://nikroid.github.io aux origines JS"

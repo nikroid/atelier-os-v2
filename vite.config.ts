@@ -5,7 +5,7 @@ import { atelierVersionPlugin } from './vite.atelier-version';
 const githubPages = process.env.GITHUB_PAGES === 'true';
 
 export default defineConfig({
-  base: githubPages ? '/atelier-os-v2/' : '/',
+  base: githubPages ? '/atelier-os-0.1.0/' : '/',
   server: {
     port: 5191,
     strictPort: true,

@@ -6,7 +6,7 @@
 
 ### 1. Repo GitHub
 
-- Nom du repo : **`atelier-os-v2`** (doit correspondre au `base` Vite `/atelier-os-v2/`)
+- Nom du repo : **`atelier-os-0.1.0`** (doit correspondre au `base` Vite `/atelier-os-0.1.0/`)
 - Activer **Pages** → source **GitHub Actions**
 
 ### 2. Secret
@@ -38,7 +38,7 @@ Build manuel local (aperçu du chemin Pages) :
 
 ```bash
 GITHUB_PAGES=true npm run build
-npx vite preview --base /atelier-os-v2/
+npx vite preview --base /atelier-os-0.1.0/
 ```
 
 ## Données

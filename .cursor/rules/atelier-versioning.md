@@ -31,7 +31,7 @@ Quand l'utilisateur demande une version **MAJEURE** (ex. `2.x.x` → `3.0.0`) :
 
 1. Exécuter `node -e "import('./scripts/semver.mjs').then(m => m.writePackageVersion(m.bumpMajor(m.readPackageVersion())))"` ou éditer `package.json` → `3.0.0`
 2. **Archiver** le dossier courant, ex. :
-   - `/Applications/MAMP/htdocs/atelier-os-v2` → `atelier-os-v2-archive` ou `atelier-os-v2.2.x-backup-YYYY-MM-DD`
+   - `/Applications/MAMP/htdocs/atelier-os-0.1.0` → `atelier-os-0.1.0-archive` ou `atelier-os-0.1.0-backup-YYYY-MM-DD`
 3. **Continuer le développement** dans un nouveau dossier nommé d'après la version, ex. `atelier-os-v3`
 4. Mettre à jour le remote Git / repo si nécessaire
 5. Ne jamais bumper le MAJOR sans demande explicite de l'utilisateur
