@@ -14,6 +14,11 @@ import {
   resolveImageHeight,
   resolveImageWidth,
 } from '../../utils/imageBlockLayout';
+import { normalizeContainerSize } from '../../utils/containerDimensions';
+import {
+  resolveBlockSurfaceBackground,
+  surfaceBackgroundToCss,
+} from '../../utils/backgroundStyle';
 import { useDropHover } from './DropHoverContext';
 
 type LayoutAxis = FlexAxis;
@@ -125,17 +130,18 @@ function createContainerDragHandlers(
 }
 
 function blockBaseStyle(block: DocBlock): CSSProperties {
+  const isPageContent = block.containerRole === 'page-content';
   const padding =
     block.type === 'container'
-      ? (block.padding ?? 0) + (block.blockPadding ?? 0)
+      ? (block.padding ?? 0) + (isPageContent ? 0 : (block.blockPadding ?? 0))
       : (block.blockPadding ?? 0);
 
   const style: CSSProperties = {
     padding,
-    marginTop: block.blockMarginTop ?? 0,
-    marginRight: block.blockMarginRight ?? 0,
-    marginBottom: block.blockMarginBottom ?? 0,
-    marginLeft: block.blockMarginLeft ?? 0,
+    marginTop: isPageContent ? 0 : (block.blockMarginTop ?? 0),
+    marginRight: isPageContent ? 0 : (block.blockMarginRight ?? 0),
+    marginBottom: isPageContent ? 0 : (block.blockMarginBottom ?? 0),
+    marginLeft: isPageContent ? 0 : (block.blockMarginLeft ?? 0),
     boxSizing: 'border-box',
   };
 
@@ -154,23 +160,34 @@ function resolveContainerLayout(block: DocBlock, depth: number): CSSProperties {
     minHeight: 0,
     minWidth: 0,
     boxSizing: 'border-box',
-    flex: '1 1 auto',
   };
 
+  // Conteneur imbriqué : le wrap parent porte la taille, l'intérieur remplit le wrap.
+  if (depth > 0) {
+    return {
+      ...layout,
+      flex: '1 1 auto',
+      height: '100%',
+    };
+  }
+
   if (block.height === 'auto') {
-    layout.height = 'auto';
     layout.flex = '0 1 auto';
+    layout.height = 'auto';
   } else if (block.height) {
-    layout.height = block.height;
-    layout.flex = `0 0 ${block.height}`;
-    layout.maxHeight = block.height;
+    const height = normalizeContainerSize(block.height) ?? block.height;
+    layout.flex = `0 0 ${height}`;
+    layout.height = height;
+    layout.maxHeight = height;
   } else {
+    layout.flex = '1 1 0%';
     layout.height = '100%';
   }
 
-  if (depth === 0 && block.width && block.width !== '100%') {
-    layout.width = block.width;
-    layout.maxWidth = block.width;
+  if (block.width && block.width !== '100%') {
+    const width = normalizeContainerSize(block.width) ?? block.width;
+    layout.width = width;
+    layout.maxWidth = width;
   }
 
   return layout;
@@ -266,37 +283,45 @@ function getChildWrapStyle(
   }
 
   const customWidth = Boolean(child.width && child.width !== '100%');
-  const customHeight = Boolean(child.height);
+  const customHeight = Boolean(child.height && child.height !== 'auto');
+  const heightCss = customHeight ? normalizeContainerSize(child.height) ?? child.height : undefined;
+  const widthCss = customWidth ? normalizeContainerSize(child.width) ?? child.width : undefined;
 
   if (parentDirection === 'column') {
     style.width = '100%';
-    if (customHeight) {
-      style.flex = `0 0 ${child.height}`;
-      style.height = child.height;
-      style.maxHeight = child.height;
+    if (customHeight && heightCss) {
+      // Axe principal = vertical : flex-basis en % comme en CSS flex.
+      style.flex = `0 0 ${heightCss}`;
+      style.minHeight = 0;
     } else {
       style.flex = '1 1 0%';
-      style.height = '100%';
+      style.minHeight = 0;
     }
     return style;
   }
 
-  if (customWidth) {
-    style.flex = `0 0 ${child.width}`;
-    style.width = child.width;
-    style.maxWidth = child.width;
+  if (customWidth && widthCss) {
+    style.flex = `0 0 ${widthCss}`;
+    style.width = widthCss;
+    style.maxWidth = widthCss;
   } else {
     style.flex = '1 1 0%';
     style.width = 'auto';
+    style.minWidth = 0;
   }
 
-  if (customHeight) {
-    style.height = child.height;
-    style.maxHeight = child.height;
-    style.alignSelf = 'flex-start';
+  if (customHeight && heightCss) {
+    // Axe secondaire = vertical dans une ligne : height en % du parent (comme en CSS flex).
+    style.height = heightCss;
+    style.maxHeight = heightCss;
+    style.minHeight = 0;
+    style.flexShrink = 0;
+    const crossAlign =
+      parentAlign && parentAlign !== 'stretch' ? parentAlign : 'flex-start';
+    style.alignSelf = crossAlign;
   } else {
-    style.height = '100%';
     style.alignSelf = 'stretch';
+    style.minHeight = 0;
   }
 
   return style;
@@ -365,8 +390,7 @@ export function BlockRenderer({
         style={merged}
         onClick={(e) => {
           e.stopPropagation();
-          if (depth === 0) onPageBackgroundClick?.();
-          else onSelect?.(block.id);
+          onSelect?.(block.id);
         }}
         draggable={depth > 0}
         onDragStart={(e) => {
@@ -394,6 +418,7 @@ export function BlockRenderer({
       alignItems: isEmpty && isEdit ? 'center' : (block.align ?? 'stretch'),
       justifyContent: isEmpty && isEdit ? 'center' : (block.justify ?? 'flex-start'),
       boxShadow: isEdit ? 'inset 0 0 0 1px rgba(0, 0, 0, 0.08)' : undefined,
+      ...surfaceBackgroundToCss(resolveBlockSurfaceBackground(block)),
       ...resolveContainerLayout(block, depth),
     };
     const containerDrag = createContainerDragHandlers(
@@ -528,3 +553,4 @@ export function BlockRenderer({
 }
 
 export { getPageDimensions } from '../../utils/pageLayout';
+export { getChildWrapStyle };

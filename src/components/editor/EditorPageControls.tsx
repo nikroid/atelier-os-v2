@@ -1,5 +1,12 @@
 import type { DocTemplatePage, PageKind } from '../../types/templates';
+import {
+  blockBackgroundValueFromPage,
+  clearPageBackgroundPatch,
+  pageHasCustomBackground,
+  pagePatchFromBackgroundValue,
+} from '../../utils/backgroundStyle';
 import { pageKindLabel } from '../../utils/templatePages';
+import { BackgroundControls } from './BackgroundControls';
 import { IconToggleGroup } from './IconToggleGroup';
 
 const PAGE_KIND_OPTIONS = [
@@ -11,7 +18,10 @@ interface EditorPageSettingsProps {
   page: DocTemplatePage;
   pageIndex: number;
   pageCount: number;
+  templateBackground: string;
+  readonly?: boolean;
   onKindChange: (kind: PageKind) => void;
+  onBackgroundPatch: (patch: Partial<DocTemplatePage>) => void;
   onRemove?: () => void;
 }
 
@@ -19,15 +29,34 @@ export function EditorPageSettings({
   page,
   pageIndex,
   pageCount,
+  templateBackground,
+  readonly = false,
   onKindChange,
+  onBackgroundPatch,
   onRemove,
 }: EditorPageSettingsProps) {
+  const hasCustomBackground = pageHasCustomBackground(page);
+
   return (
     <div className="editor-page-settings">
       <p className="editor-page-settings-title">
         Page {pageIndex + 1}
         <span className="editor-page-settings-kind">{pageKindLabel(page.kind)}</span>
       </p>
+      <BackgroundControls
+        label="Arrière-plan"
+        disabled={readonly}
+        value={blockBackgroundValueFromPage(page, { background: templateBackground })}
+        onChange={(value) => onBackgroundPatch(pagePatchFromBackgroundValue(value))}
+        resetLabel="Par défaut"
+        onReset={() => onBackgroundPatch(clearPageBackgroundPatch())}
+        resetDisabled={!hasCustomBackground}
+        hint={
+          !hasCustomBackground
+            ? 'Utilise le fond par défaut du modèle (réglages du document).'
+            : undefined
+        }
+      />
       <IconToggleGroup
         label="Type de page"
         value={page.kind}
@@ -47,4 +76,3 @@ export function EditorPageSettings({
     </div>
   );
 }
-

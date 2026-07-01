@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { DocTemplate } from '../types/templates';
 import {
   DEFAULT_EDITOR_TEMPLATE_ID,
+  isBuiltinTemplate,
   resolveDefaultEditorTemplateId,
 } from './templateCatalog';
 import type { TemplateContext } from './templateFields';
+import { getPageBackground } from './backgroundStyle';
 import {
   countExpandedPdfPages,
   emptyPageRoot,
@@ -51,6 +53,28 @@ describe('templatePages', () => {
     expect(normalized.pages).toHaveLength(1);
     expect(normalized.pages![0].id).toBe(legacyPageId('tpl_test'));
     expect(normalized.root).toBe(normalized.pages![0].root);
+  });
+
+  it('getPageBackground prefers page color over template default', () => {
+    const tpl = sampleTemplate({ background: '#111111' });
+    const page = { id: 'p1', kind: 'static' as const, root: emptyPageRoot(), background: '#abcdef' };
+    expect(getPageBackground(page, tpl)).toBe('#abcdef');
+    expect(getPageBackground({ ...page, background: undefined }, tpl)).toBe('#111111');
+  });
+
+  it('expandTemplateForPdf includes per-page background', () => {
+    const tpl = normalizeTemplate(
+      sampleTemplate({
+        background: '#111111',
+        pages: [
+          { id: 'p1', kind: 'static', root: emptyPageRoot(), background: '#aaaaaa' },
+          { id: 'p2', kind: 'static', root: emptyPageRoot() },
+        ],
+      }),
+    );
+    const expanded = expandTemplateForPdf(tpl, [ctx('a')]);
+    expect(expanded[0].surface.color).toBe('#aaaaaa');
+    expect(expanded[1].surface.color).toBe('#111111');
   });
 
   it('expandTemplateForPdf mixes static and dynamic pages', () => {
@@ -124,5 +148,18 @@ describe('resolveDefaultEditorTemplateId', () => {
       },
     ]);
     expect(id).toBe('new');
+  });
+
+  it('does not treat user template as builtin when name matches a default', () => {
+    expect(
+      isBuiltinTemplate({
+        ...sampleTemplate({ id: 'user-custom-1', nom: 'Catalogue' }),
+      }),
+    ).toBe(false);
+    expect(
+      isBuiltinTemplate({
+        ...sampleTemplate({ id: 'builtin_catalogue', nom: 'Mon catalogue perso' }),
+      }),
+    ).toBe(true);
   });
 });

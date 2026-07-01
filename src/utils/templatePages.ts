@@ -2,11 +2,16 @@ import { uid } from '../db/database';
 import type { DocBlock, DocTemplate, DocTemplatePage, PageKind } from '../types/templates';
 import { createBlockId } from './blockTree';
 import type { TemplateContext } from './templateFields';
+import {
+  resolvePageSurfaceBackground,
+  type SurfaceBackground,
+} from './backgroundStyle';
 
 export function emptyPageRoot(): DocBlock {
   return {
     id: createBlockId(),
     type: 'container',
+    containerRole: 'page-content',
     direction: 'column',
     gap: 0,
     align: 'stretch',
@@ -30,6 +35,12 @@ export function createTemplatePage(kind: PageKind = 'static'): DocTemplatePage {
   };
 }
 
+function tagPageContentRoot(root: DocBlock): DocBlock {
+  if (root.type !== 'container') return root;
+  if (root.containerRole === 'page-content') return root;
+  return { ...root, containerRole: 'page-content' };
+}
+
 export function legacyPageId(templateId: string, index = 0): string {
   return `${templateId}_page_${index}`;
 }
@@ -47,7 +58,10 @@ export function getTemplatePages(template: DocTemplate): DocTemplatePage[] {
 }
 
 export function normalizeTemplate(template: DocTemplate): DocTemplate {
-  const pages = getTemplatePages(template);
+  const pages = getTemplatePages(template).map((p) => ({
+    ...p,
+    root: tagPageContentRoot(p.root),
+  }));
   return {
     ...template,
     pages,
@@ -108,7 +122,7 @@ export function removeTemplatePage(template: DocTemplate, pageId: string): DocTe
 export function updateTemplatePage(
   template: DocTemplate,
   pageId: string,
-  patch: Partial<Pick<DocTemplatePage, 'kind' | 'root'>>,
+  patch: Partial<Pick<DocTemplatePage, 'kind' | 'root' | 'background' | 'backgroundType' | 'backgroundImage' | 'backgroundImageFit' | 'backgroundImageSize' | 'backgroundImagePosition'>>,
 ): DocTemplate {
   const pages = getTemplatePages(template).map((p) => (p.id === pageId ? { ...p, ...patch } : p));
   return syncTemplateRoots({ ...template, pages });
@@ -129,7 +143,11 @@ export function updateTemplatePageRoot(
 export interface ExpandedPdfPage {
   root: DocBlock;
   ctx: TemplateContext;
+  surface: SurfaceBackground;
 }
+
+/** @deprecated Utiliser resolvePageSurfaceBackground */
+export { getPageBackground } from './backgroundStyle';
 
 /** Déplie les pages statiques (×1) et dynamiques (× nb de contextes). */
 export function expandTemplateForPdf(
@@ -141,13 +159,14 @@ export function expandTemplateForPdf(
   const result: ExpandedPdfPage[] = [];
 
   for (const page of pages) {
+    const surface = resolvePageSurfaceBackground(page, template);
     if (page.kind === 'dynamic') {
       const ctxList = contexts.length ? contexts : [fallbackCtx];
       for (const ctx of ctxList) {
-        result.push({ root: page.root, ctx });
+        result.push({ root: page.root, ctx, surface });
       }
     } else {
-      result.push({ root: page.root, ctx: fallbackCtx });
+      result.push({ root: page.root, ctx: fallbackCtx, surface });
     }
   }
 

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import type { PageKind } from '../../types/templates';
+import { pageContentCssVars } from '../../utils/containerDimensions';
 
 /** Espace vertical entre deux pages dans l'éditeur (px, avant zoom). */
 export const EDITOR_PAGE_GAP = 48;
@@ -74,9 +75,7 @@ export function EditorPagedCanvas({
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
-            ['--page-h' as string]: `${pageH}px`,
-            ['--page-content-h' as string]: `${pageH - margin * 2}px`,
-            ['--page-content-w' as string]: `${pageW - margin * 2}px`,
+            ...pageContentCssVars(pageW - margin * 2, pageH - margin * 2),
             ['--editor-page-gap' as string]: `${pageGap}px`,
             ['--editor-page-ghost-spread' as string]: `${EDITOR_PAGE_GHOST_SPREAD}px`,
             ['--editor-page-trailing' as string]: `${trailingHeight}px`,

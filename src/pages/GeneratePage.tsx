@@ -32,6 +32,7 @@ export function GeneratePage() {
     template: DocTemplate;
     ctx: TemplateContext;
     root?: DocBlock;
+    pageSurface?: import('../utils/backgroundStyle').SurfaceBackground;
   } | null>(null);
 
   const toggleWork = (id: string) => {
@@ -61,8 +62,18 @@ export function GeneratePage() {
     }
   };
 
-  const renderPage = async (template: DocTemplate, root: DocBlock, ctx: TemplateContext) => {
-    flushSync(() => setPdfRender({ template, ctx, root }));
+  const renderPage = async (
+    template: DocTemplate,
+    page: { root: DocBlock; ctx: TemplateContext; surface: import('../utils/backgroundStyle').SurfaceBackground },
+  ) => {
+    flushSync(() =>
+      setPdfRender({
+        template,
+        ctx: page.ctx,
+        root: page.root,
+        pageSurface: page.surface,
+      }),
+    );
   };
 
   const generateWithTemplate = async () => {
@@ -97,8 +108,8 @@ export function GeneratePage() {
         `${tpl.nom.replace(/\s+/g, '-').toLowerCase()}-${selected.length}oeuvres.pdf`,
         undefined,
         undefined,
-        async (root, ctx) => {
-          await renderPage(tpl, root, ctx);
+        async (page) => {
+          await renderPage(tpl, page);
         },
       );
     });
@@ -129,7 +140,7 @@ export function GeneratePage() {
         `catalogue-${expo.titre.replace(/\s+/g, '-').toLowerCase()}.pdf`,
         undefined,
         undefined,
-        async (root, ctx) => renderPage(tpl, root, ctx),
+        async (page) => renderPage(tpl, page),
       );
     });
   };
@@ -152,7 +163,7 @@ export function GeneratePage() {
         `presse-${expo.titre.replace(/\s+/g, '-').toLowerCase()}.pdf`,
         undefined,
         undefined,
-        async (root, c) => renderPage(tpl, root, c),
+        async (page) => renderPage(tpl, page),
       );
     });
   };
@@ -282,7 +293,12 @@ export function GeneratePage() {
       </div>
 
       {pdfRender && (
-        <TemplatePdfRender template={pdfRender.template} ctx={pdfRender.ctx} root={pdfRender.root} />
+        <TemplatePdfRender
+          template={pdfRender.template}
+          ctx={pdfRender.ctx}
+          root={pdfRender.root}
+          pageSurface={pdfRender.pageSurface}
+        />
       )}
     </>
   );

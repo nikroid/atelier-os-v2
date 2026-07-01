@@ -85,8 +85,21 @@ export function moveBlockToParent(
   const block = findBlock(root, blockId);
   if (!block || blockId === newParentId) return root;
   if (containsBlock(block, newParentId)) return root;
+
+  const oldParent = findParent(root, blockId);
+  const oldIndex = oldParent?.children?.findIndex((c) => c.id === blockId) ?? -1;
+
   let updated = removeBlock(root, blockId);
-  updated = addChild(updated, newParentId, block, index);
+  let insertIndex = index;
+  if (
+    insertIndex !== undefined &&
+    oldParent?.id === newParentId &&
+    oldIndex >= 0 &&
+    insertIndex > oldIndex
+  ) {
+    insertIndex -= 1;
+  }
+  updated = addChild(updated, newParentId, block, insertIndex);
   return updated;
 }
 

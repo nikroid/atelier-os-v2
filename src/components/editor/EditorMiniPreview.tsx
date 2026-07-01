@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { pageContentCssVars } from '../../utils/containerDimensions';
 
 export const PREVIEW_SCALE = 0.22;
 const GHOST_OFFSET_2 = 28;
@@ -7,7 +8,7 @@ interface EditorMiniPreviewProps {
   pageW: number;
   pageH: number;
   marginPx: number;
-  background: string;
+  surfaceStyle: CSSProperties;
   dynamic?: boolean;
   selected?: boolean;
   children: ReactNode;
@@ -18,7 +19,7 @@ export function EditorMiniPreview({
   pageW,
   pageH,
   marginPx,
-  background,
+  surfaceStyle,
   dynamic,
   selected,
   children,
@@ -37,7 +38,8 @@ export function EditorMiniPreview({
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    background,
+    ...pageContentCssVars(pageW - marginPx * 2, pageH - marginPx * 2),
+    ...surfaceStyle,
   };
 
   return (
@@ -59,12 +61,12 @@ export function EditorMiniPreview({
             <>
               <div
                 className="editor-preview-mini-ghost editor-preview-mini-ghost-2"
-                style={{ width: pageW, height: pageH, background }}
+                style={{ width: pageW, height: pageH, ...surfaceStyle }}
                 aria-hidden
               />
               <div
                 className="editor-preview-mini-ghost editor-preview-mini-ghost-1"
-                style={{ width: pageW, height: pageH, background }}
+                style={{ width: pageW, height: pageH, ...surfaceStyle }}
                 aria-hidden
               />
             </>

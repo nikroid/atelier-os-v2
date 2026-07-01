@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { DocTemplatePage } from '../../types/templates';
+import { pageSurfaceToCss } from '../../utils/backgroundStyle';
 import type { TemplateContext } from '../../utils/templateFields';
 import { BlockRenderer } from './BlockRenderer';
 import { EditorMiniPreview } from './EditorMiniPreview';
@@ -10,7 +11,7 @@ interface EditorPagePreviewListProps {
   pageW: number;
   pageH: number;
   marginPx: number;
-  background: string;
+  templateBackground: string;
   previewCtx: TemplateContext;
   readonly?: boolean;
   onSelectPage: (index: number) => void;
@@ -23,7 +24,7 @@ export function EditorPagePreviewList({
   pageW,
   pageH,
   marginPx,
-  background,
+  templateBackground,
   previewCtx,
   readonly,
   onSelectPage,
@@ -52,6 +53,8 @@ export function EditorPagePreviewList({
         const isActive = index === activePageIndex;
         const isDragging = dragIndex === index;
         const isDropTarget = dropIndex === index && dragIndex !== null && dragIndex !== index;
+
+        const pageSurfaceCss = pageSurfaceToCss(page, { background: templateBackground });
 
         return (
           <div
@@ -83,7 +86,7 @@ export function EditorPagePreviewList({
                 pageW={pageW}
                 pageH={pageH}
                 marginPx={marginPx}
-                background={background}
+                surfaceStyle={pageSurfaceCss}
                 dynamic={page.kind === 'dynamic'}
                 selected={isActive}
               >

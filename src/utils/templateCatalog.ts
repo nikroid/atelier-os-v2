@@ -5,10 +5,8 @@ export const BUILTIN_TEMPLATE_IDS = new Set(DEFAULT_TEMPLATES.map((t) => t.id));
 
 export const DEFAULT_EDITOR_TEMPLATE_ID = 'builtin_catalogue';
 
-export const BUILTIN_TEMPLATE_NAMES = new Set(DEFAULT_TEMPLATES.map((t) => t.nom));
-
-export function isBuiltinTemplate(t: Pick<DocTemplate, 'id' | 'nom'>): boolean {
-  return BUILTIN_TEMPLATE_IDS.has(t.id) || BUILTIN_TEMPLATE_NAMES.has(t.nom);
+export function isBuiltinTemplate(t: Pick<DocTemplate, 'id'>): boolean {
+  return BUILTIN_TEMPLATE_IDS.has(t.id);
 }
 
 export function isBuiltinTemplateId(id: string): boolean {

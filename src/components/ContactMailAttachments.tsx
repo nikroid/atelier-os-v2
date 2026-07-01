@@ -40,6 +40,7 @@ export function ContactMailAttachments({
     template: DocTemplate;
     ctx: TemplateContext;
     root?: DocBlock;
+    pageSurface?: import('../utils/backgroundStyle').SurfaceBackground;
   } | null>(null);
 
   const [loadingFiles, setLoadingFiles] = useState(false);
@@ -108,8 +109,15 @@ export function ContactMailAttachments({
         contexts,
         undefined,
         undefined,
-        async (root, ctx) => {
-          flushSync(() => setPdfRender({ template: tpl, ctx, root }));
+        async (page) => {
+          flushSync(() =>
+            setPdfRender({
+              template: tpl,
+              ctx: page.ctx,
+              root: page.root,
+              pageSurface: page.surface,
+            }),
+          );
         },
       );
 
@@ -141,6 +149,7 @@ export function ContactMailAttachments({
           template={pdfRender.template}
           ctx={pdfRender.ctx}
           root={pdfRender.root}
+          pageSurface={pdfRender.pageSurface}
         />
       )}
 

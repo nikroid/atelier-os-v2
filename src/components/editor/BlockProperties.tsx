@@ -5,8 +5,17 @@ import { FIELD_CATALOG, isImageField, type TemplateContext } from '../../utils/t
 import { fileToDataUrl } from '../../utils/helpers';
 import { resolveShortcodes, shortcodeTag, TEXT_SHORTCODE_FIELDS } from '../../utils/templateShortcodes';
 import { IconToggleGroup } from './IconToggleGroup';
+import { BackgroundControls } from './BackgroundControls';
+import { ColorFieldRow } from './ColorFieldRow';
 import { FlexDirectionControls } from './FlexDirectionControls';
-import { flexAxis, flexDirectionLabel } from '../../utils/flexDirection';
+import { getBlockLabel } from '../../utils/blockLabels';
+import {
+  blockBackgroundValueFromBlock,
+  blockHasCustomBackground,
+  blockPatchFromBackgroundValue,
+  clearBlockBackgroundPatch,
+} from '../../utils/backgroundStyle';
+import { flexAxis } from '../../utils/flexDirection';
 import {
   DEFAULT_IMAGE_DROP_SHADOW,
   imageObjectFitApplies,
@@ -331,6 +340,7 @@ function ImageShadowDetails({
 interface BlockPropertiesProps {
   block: DocBlock | null;
   previewCtx?: TemplateContext;
+  isPageRoot?: boolean;
   canDelete?: boolean;
   onChange: (patch: Partial<DocBlock>) => void;
   onMove: (dir: 'up' | 'down') => void;
@@ -491,6 +501,7 @@ function BlockSpacingControls({
 export function BlockProperties({
   block,
   previewCtx,
+  isPageRoot = false,
   canDelete = true,
   onChange,
   onMove,
@@ -563,7 +574,7 @@ export function BlockProperties({
   return (
     <div className="block-properties">
       <p className="block-type-label">
-        {block.type === 'container' && `Conteneur ${flexDirectionLabel(block.direction)}`}
+        {block.type === 'container' && getBlockLabel(block, isPageRoot)}
         {block.type === 'field' && fieldLabel}
         {block.type === 'text' && 'Texte libre'}
         {block.type === 'spacer' && 'Espaceur'}
@@ -571,10 +582,12 @@ export function BlockProperties({
         {block.type === 'rectangle' && 'Séparateur'}
       </p>
 
-      <details className="block-spacing-details">
-        <summary>Espacement du bloc</summary>
-        <BlockSpacingControls block={block} onChange={onChange} />
-      </details>
+      {!isPageRoot && (
+        <details className="block-spacing-details">
+          <summary>Espacement du bloc</summary>
+          <BlockSpacingControls block={block} onChange={onChange} />
+        </details>
+      )}
 
       {block.type === 'text' && (
         <>
@@ -671,22 +684,16 @@ export function BlockProperties({
               onChange={(e) => onChange({ rectHeight: parseInt(e.target.value) || 24 })}
             />
           </label>
-          <label>
-            Fond
-            <input
-              type="color"
-              value={block.backgroundColor ?? '#e8e4dc'}
-              onChange={(e) => onChange({ backgroundColor: e.target.value })}
-            />
-          </label>
-          <label>
-            Bordure
-            <input
-              type="color"
-              value={block.borderColor ?? '#d4d0c8'}
-              onChange={(e) => onChange({ borderColor: e.target.value })}
-            />
-          </label>
+          <ColorFieldRow
+            label="Fond"
+            value={block.backgroundColor ?? '#e8e4dc'}
+            onChange={(backgroundColor) => onChange({ backgroundColor })}
+          />
+          <ColorFieldRow
+            label="Bordure"
+            value={block.borderColor ?? '#d4d0c8'}
+            onChange={(borderColor) => onChange({ borderColor })}
+          />
           <label>
             Épaisseur bordure
             <input
@@ -702,23 +709,42 @@ export function BlockProperties({
 
       {block.type === 'container' && (
         <>
-          <FlexDirectionControls value={block.direction} onChange={(direction) => onChange({ direction })} />
-          <div className="form-row">
-            <DimensionField
-              label="Largeur"
-              value={block.width}
-              units={['px', '%']}
-              fallback={{ value: 100, unit: '%' }}
-              onChange={(width) => onChange({ width })}
-            />
-            <DimensionField
-              label="Hauteur"
-              value={block.height}
-              units={['px', '%']}
-              fallback="auto"
-              onChange={(height) => onChange({ height })}
-            />
-          </div>
+          {!isPageRoot && (
+            <FlexDirectionControls value={block.direction} onChange={(direction) => onChange({ direction })} />
+          )}
+          <BackgroundControls
+            label="Arrière-plan"
+            value={blockBackgroundValueFromBlock(block)}
+            onChange={(value) => onChange(blockPatchFromBackgroundValue(value))}
+            resetLabel="Transparent"
+            onReset={() => onChange(clearBlockBackgroundPatch())}
+            resetDisabled={!blockHasCustomBackground(block)}
+            hint={
+              !blockHasCustomBackground(block)
+                ? isPageRoot
+                  ? 'Aucun arrière-plan — le fond de page reste visible.'
+                  : 'Aucun arrière-plan — le fond parent reste visible.'
+                : undefined
+            }
+          />
+          {!isPageRoot && (
+            <div className="form-row">
+              <DimensionField
+                label="Largeur"
+                value={block.width}
+                units={['px', '%']}
+                fallback={{ value: 100, unit: '%' }}
+                onChange={(width) => onChange({ width })}
+              />
+              <DimensionField
+                label="Hauteur"
+                value={block.height}
+                units={['px', '%']}
+                fallback="auto"
+                onChange={(height) => onChange({ height })}
+              />
+            </div>
+          )}
           <div className="form-row">
             {(block.children?.length ?? 0) > 1 && (
               <label>
@@ -733,7 +759,7 @@ export function BlockProperties({
               </label>
             )}
             <label>
-              Padding conteneur
+              {isPageRoot ? 'Padding contenu' : 'Padding conteneur'}
               <input
                 type="number"
                 min={0}
@@ -798,7 +824,7 @@ export function BlockProperties({
           type="button"
           className="btn btn-danger btn-sm btn-icon"
           disabled={!canDelete}
-          title={canDelete ? 'Supprimer' : 'Le conteneur racine ne peut pas être supprimé'}
+          title={canDelete ? 'Supprimer' : 'Le contenu de page ne peut pas être supprimé'}
           onClick={onDelete}
         >
           🗑

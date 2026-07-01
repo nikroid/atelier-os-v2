@@ -6,6 +6,7 @@ import {
   duplicateBlockAfter,
   findBlock,
   moveBlock,
+  moveBlockToParent,
   removeBlock,
   updateBlock,
 } from './blockTree';
@@ -57,6 +58,24 @@ describe('blockTree', () => {
   it('moveBlock swaps siblings', () => {
     const root = moveBlock(sampleRoot(), 'b', 'up');
     expect(root.children?.map((c) => c.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('moveBlockToParent moves nested block to root', () => {
+    const root = moveBlockToParent(sampleRoot(), 'd', 'root', 1);
+    expect(root.children?.map((c) => c.id)).toEqual(['a', 'd', 'b', 'c']);
+    expect(findBlock(root, 'c')?.children).toEqual([]);
+  });
+
+  it('moveBlockToParent reorders within same parent', () => {
+    const root = moveBlockToParent(sampleRoot(), 'a', 'root', 2);
+    expect(root.children?.map((c) => c.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('moveBlockToParent rejects moving into descendant', () => {
+    const before = sampleRoot();
+    const root = moveBlockToParent(before, 'c', 'd');
+    expect(findBlock(root, 'c')?.children?.[0].id).toBe('d');
+    expect(root.children?.map((c) => c.id)).toEqual(before.children?.map((c) => c.id));
   });
 
   it('duplicateBlock assigns new ids recursively', () => {

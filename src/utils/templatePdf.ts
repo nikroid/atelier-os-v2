@@ -1,8 +1,9 @@
 import jsPDF from 'jspdf';
-import type { DocBlock, DocTemplate } from '../types/templates';
+import type { DocTemplate } from '../types/templates';
 import { getPageDimensions } from './pageLayout';
 import type { TemplateContext } from './templateFields';
-import { expandTemplateForPdf } from './templatePages';
+import type { SurfaceBackground } from './backgroundStyle';
+import { expandTemplateForPdf, type ExpandedPdfPage } from './templatePages';
 
 export const MM_TO_PX = 3.78;
 
@@ -49,8 +50,10 @@ export async function waitForPdfCaptureReady(container: HTMLElement): Promise<vo
 export async function captureTemplateToCanvas(
   template: DocTemplate,
   rootElement?: HTMLElement | null,
+  pageSurface?: SurfaceBackground,
 ): Promise<HTMLCanvasElement> {
   const pdfSize = getPdfRenderPixelSize(template.format, template.margin);
+  const bg = pageSurface?.color ?? template.background ?? '#f5f2ed';
   const el = rootElement ?? document.getElementById('template-pdf-render');
   if (!el) throw new Error('Élément de rendu introuvable');
 
@@ -73,7 +76,7 @@ export async function captureTemplateToCanvas(
     scrollX: 0,
     scrollY: 0,
     useCORS: true,
-    backgroundColor: template.background,
+    backgroundColor: bg,
     logging: false,
     onclone: (_doc, clonedEl) => {
       preparePdfPageElement(clonedEl as HTMLElement, pdfSize.widthPx);
@@ -88,8 +91,8 @@ export async function generateTemplateDocumentBlob(
   template: DocTemplate,
   contexts: TemplateContext[],
   rootElement?: HTMLElement | null,
-  presetPages?: { root: DocBlock; ctx: TemplateContext }[],
-  onBeforeEachPage?: (root: DocBlock, ctx: TemplateContext, index: number) => Promise<void>,
+  presetPages?: ExpandedPdfPage[],
+  onBeforeEachPage?: (page: ExpandedPdfPage, index: number) => Promise<void>,
 ): Promise<Blob> {
   const { w, h } = getPageDimensions(template.format);
   const expanded = presetPages ?? expandTemplateForPdf(template, contexts);
@@ -101,10 +104,10 @@ export async function generateTemplateDocumentBlob(
   });
 
   for (let i = 0; i < expanded.length; i++) {
-    const { root, ctx } = expanded[i];
-    await onBeforeEachPage?.(root, ctx, i);
+    const page = expanded[i];
+    await onBeforeEachPage?.(page, i);
 
-    const canvas = await captureTemplateToCanvas(template, rootElement);
+    const canvas = await captureTemplateToCanvas(template, rootElement, page.surface);
     if (i > 0) doc.addPage();
     const imgData = canvas.toDataURL('image/jpeg', 0.92);
     doc.addImage(imgData, 'JPEG', 0, 0, w, h);
@@ -120,8 +123,8 @@ export async function generateTemplateDocument(
   filename: string,
   rootElement?: HTMLElement | null,
   /** Pages pré-dépliées (sinon calcul via expandTemplateForPdf). */
-  presetPages?: { root: DocBlock; ctx: TemplateContext }[],
-  onBeforeEachPage?: (root: DocBlock, ctx: TemplateContext, index: number) => Promise<void>,
+  presetPages?: ExpandedPdfPage[],
+  onBeforeEachPage?: (page: ExpandedPdfPage, index: number) => Promise<void>,
 ): Promise<void> {
   const blob = await generateTemplateDocumentBlob(
     template,

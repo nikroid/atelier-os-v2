@@ -143,7 +143,7 @@ export function EditorToolbar({
             />
           </label>
           <label className="editor-toolbar-field editor-toolbar-field-color">
-            <span className="editor-compact-label">Fond</span>
+            <span className="editor-compact-label">Fond par défaut</span>
             <input
               type="color"
               disabled={isReadonly}

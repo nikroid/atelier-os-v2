@@ -385,9 +385,8 @@ export async function cleanupBuiltinTemplatesFromDb(
   deleteFn: (id: string) => Promise<void>,
 ): Promise<void> {
   const all = await listFn();
-  const builtinNames = new Set(DEFAULT_TEMPLATES.map((t) => t.nom));
   for (const t of all) {
-    if (t.id.startsWith('builtin_') || builtinNames.has(t.nom)) {
+    if (t.id.startsWith('builtin_')) {
       await deleteFn(t.id);
     }
   }

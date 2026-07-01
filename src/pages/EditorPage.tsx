@@ -38,6 +38,10 @@ import {
 } from '../utils/blockTree';
 import type { TemplateContext } from '../utils/templateFields';
 import {
+  pageSurfaceToCss,
+  type SurfaceBackground,
+} from '../utils/backgroundStyle';
+import {
   addTemplatePage,
   createTemplatePage,
   defaultPageKindForTemplate,
@@ -51,6 +55,7 @@ import {
   updateTemplatePageRoot,
 } from '../utils/templatePages';
 import { generateTemplateDocument, getPdfRenderPixelSize } from '../utils/templatePdf';
+import { pageContentCssVars } from '../utils/containerDimensions';
 
 const ZOOM_MIN = 30;
 const ZOOM_MAX = 150;
@@ -68,7 +73,7 @@ function EditorDropCanvas({
   pageW,
   pageH,
   marginPx,
-  background,
+  templateBackground,
   zoomScale,
   previewCtx,
   selectedBlockId,
@@ -84,7 +89,7 @@ function EditorDropCanvas({
   pageW: number;
   pageH: number;
   marginPx: number;
-  background: string;
+  templateBackground: string;
   zoomScale: number;
   previewCtx: TemplateContext;
   selectedBlockId: string | null;
@@ -123,6 +128,7 @@ function EditorDropCanvas({
         {pages.map((page, pageIndex) => {
           const isPageSelected = pageIndex === activePageIndex;
           const isActiveForEdit = isPageSelected && !isReadonly;
+          const pageSurfaceCss = pageSurfaceToCss(page, { background: templateBackground });
 
           return (
             <div key={page.id} className="editor-page-unit" style={{ width: pageW }}>
@@ -134,12 +140,12 @@ function EditorDropCanvas({
                   <>
                     <div
                       className="editor-page-ghost editor-page-ghost-2"
-                      style={{ width: pageW, height: pageH, background }}
+                      style={{ width: pageW, height: pageH, ...pageSurfaceCss }}
                       aria-hidden
                     />
                     <div
                       className="editor-page-ghost editor-page-ghost-1"
-                      style={{ width: pageW, height: pageH, background }}
+                      style={{ width: pageW, height: pageH, ...pageSurfaceCss }}
                       aria-hidden
                     />
                   </>
@@ -155,7 +161,8 @@ function EditorDropCanvas({
                     boxSizing: 'border-box',
                     flexShrink: 0,
                     overflow: 'hidden',
-                    background,
+                    ...pageContentCssVars(pageW - marginPx * 2, pageH - marginPx * 2),
+                    ...pageSurfaceCss,
                   }}
                   onClick={(e) => {
                     if (e.target === e.currentTarget) onPageBackground(pageIndex);
@@ -330,6 +337,8 @@ export function EditorPage() {
     template: DocTemplate;
     ctx: TemplateContext;
     root?: DocBlock;
+    pageBackground?: string;
+    pageSurface?: SurfaceBackground;
   } | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const history = useUndoHistory<DocTemplate | null>(null);
@@ -471,8 +480,16 @@ export function EditorPage() {
         `${draft.type}-apercu.pdf`,
         undefined,
         undefined,
-        async (root, ctx) => {
-          flushSync(() => setPdfRender({ template: draft, ctx, root }));
+        async (page) => {
+          flushSync(() =>
+            setPdfRender({
+              template: draft,
+              ctx: page.ctx,
+              root: page.root,
+              pageBackground: page.surface.color,
+              pageSurface: page.surface,
+            }),
+          );
         },
       );
     } catch (err) {
@@ -533,6 +550,14 @@ export function EditorPage() {
     (kind: PageKind) => {
       if (!activePage) return;
       commitDraft((t) => updateTemplatePage(t, activePage.id, { kind }));
+    },
+    [commitDraft, activePage],
+  );
+
+  const handlePageBackgroundPatch = useCallback(
+    (patch: Partial<DocTemplatePage>) => {
+      if (!activePage) return;
+      commitDraft((t) => updateTemplatePage(t, activePage.id, patch));
     },
     [commitDraft, activePage],
   );
@@ -781,7 +806,7 @@ export function EditorPage() {
                   pageW={pageW}
                   pageH={pageH}
                   marginPx={marginPx}
-                  background={draft.background}
+                  templateBackground={draft.background}
                   zoomScale={zoomScale}
                   previewCtx={previewCtx}
                   selectedBlockId={selectedBlockId}
@@ -813,14 +838,17 @@ export function EditorPage() {
                       page={activePage}
                       pageIndex={activePageIndex}
                       pageCount={templatePages.length}
+                      templateBackground={draft?.background ?? '#f5f2ed'}
                       onKindChange={handlePageKindChange}
+                      onBackgroundPatch={handlePageBackgroundPatch}
                       onRemove={() => handleRemovePage(activePage.id)}
                     />
                   )}
-                  {selectedBlockId && (
+                  {selectedBlockId && selectedBlock && (
                     <BlockProperties
                       block={selectedBlock}
                       previewCtx={previewCtx}
+                      isPageRoot={activePage ? selectedBlockId === activePage.root.id : false}
                       canDelete={Boolean(
                         selectedBlockId && activePage && selectedBlockId !== activePage.root.id,
                       )}
@@ -830,6 +858,20 @@ export function EditorPage() {
                       onDuplicate={handleBlockDuplicate}
                     />
                   )}
+                  {activePage &&
+                    !isReadonly &&
+                    selectedBlockId &&
+                    selectedBlockId === activePage.root.id && (
+                      <EditorPageSettings
+                        page={activePage}
+                        pageIndex={activePageIndex}
+                        pageCount={templatePages.length}
+                        templateBackground={draft?.background ?? '#f5f2ed'}
+                        onKindChange={handlePageKindChange}
+                        onBackgroundPatch={handlePageBackgroundPatch}
+                        onRemove={() => handleRemovePage(activePage.id)}
+                      />
+                    )}
                 </>
               }
               tree={
@@ -837,10 +879,16 @@ export function EditorPage() {
                   <EditorBlockTree
                     root={activePage.root}
                     selectedId={selectedBlockId}
+                    readonly={isReadonly}
                     onSelect={(id) => {
-                      if (id === activePage.root.id) setSelectedBlockId(null);
-                      else setSelectedBlockId(id);
+                      setSelectedBlockId(id);
                       setSideTab('props');
+                    }}
+                    onMove={(blockId, parentId, index) => {
+                      commitPageRoot(activePage.id, (root) =>
+                        moveBlockToParent(root, blockId, parentId, index),
+                      );
+                      setSelectedBlockId(blockId);
                     }}
                   />
                 ) : null
@@ -880,7 +928,7 @@ export function EditorPage() {
                       pageW={pageW}
                       pageH={pageH}
                       marginPx={marginPx}
-                      background={draft.background}
+                      templateBackground={draft.background}
                       previewCtx={previewCtx}
                       readonly={isReadonly}
                       onSelectPage={handleSelectPageFromPreview}
@@ -895,7 +943,12 @@ export function EditorPage() {
       </div>
 
       {pdfRender && (
-        <TemplatePdfRender template={pdfRender.template} ctx={pdfRender.ctx} root={pdfRender.root} />
+        <TemplatePdfRender
+          template={pdfRender.template}
+          ctx={pdfRender.ctx}
+          root={pdfRender.root}
+          pageSurface={pdfRender.pageSurface}
+        />
       )}
     </div>
   );

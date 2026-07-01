@@ -1,3 +1,35 @@
+export type BackgroundFillType = 'color' | 'image';
+export type BackgroundImageFit = 'cover' | 'contain' | 'stretch';
+
+export type BackgroundPositionUnit = '%' | 'px';
+
+export interface BackgroundImagePosition {
+  x: number;
+  xUnit: BackgroundPositionUnit;
+  y: number;
+  yUnit: BackgroundPositionUnit;
+}
+
+export interface BackgroundImageSize {
+  width: number;
+  widthUnit: BackgroundPositionUnit;
+  /** `auto` = hauteur proportionnelle (syntaxe CSS à une valeur). */
+  height: number | 'auto';
+  heightUnit: BackgroundPositionUnit;
+}
+
+/** Anciennes valeurs prédéfinies (migration lecture seule). */
+export type LegacyBackgroundImagePosition =
+  | 'top left'
+  | 'top center'
+  | 'top right'
+  | 'center left'
+  | 'center'
+  | 'center right'
+  | 'bottom left'
+  | 'bottom center'
+  | 'bottom right';
+
 export type DocTemplateType =
   | 'cartel'
   | 'fiche'
@@ -52,9 +84,14 @@ export interface ImageDropShadow {
   opacity?: number;
 }
 
+/** Rôle sémantique d'un conteneur (le conteneur racine de page = zone « corps » du modèle). */
+export type ContainerRole = 'page-content';
+
 export interface DocBlock {
   id: string;
   type: 'container' | 'field' | 'text' | 'spacer' | 'image' | 'rectangle';
+  /** Conteneur racine de page — libellé « Contenu de page » dans l'éditeur. */
+  containerRole?: ContainerRole;
   direction?: FlexDirection;
   gap?: number;
   align?: AlignItems;
@@ -88,6 +125,11 @@ export interface DocBlock {
   spacerHeight?: number;
   rectHeight?: number;
   backgroundColor?: string;
+  backgroundType?: BackgroundFillType;
+  backgroundImage?: string;
+  backgroundImageFit?: BackgroundImageFit;
+  backgroundImageSize?: BackgroundImageSize;
+  backgroundImagePosition?: BackgroundImagePosition;
   borderColor?: string;
   borderWidth?: number;
 }
@@ -98,6 +140,13 @@ export interface DocTemplatePage {
   id: string;
   kind: PageKind;
   root: DocBlock;
+  /** Fond couleur de la page (marges comprises). */
+  background?: string;
+  backgroundType?: BackgroundFillType;
+  backgroundImage?: string;
+  backgroundImageFit?: BackgroundImageFit;
+  backgroundImageSize?: BackgroundImageSize;
+  backgroundImagePosition?: BackgroundImagePosition;
 }
 
 export interface DocTemplate {
